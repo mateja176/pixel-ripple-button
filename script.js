@@ -7,7 +7,7 @@ const settings = {
   maxTilt: 9,
   waveDuration: 720, waveSpeed: 1.5, waveWidth: 4.5, waveStrength: 1.5,
   glowDuration: 140, highlightSpread: 0.09,
-  shimmerPeriod: 450, shimmerStrength: 0.14,
+  shimmerStrength: 0.14,
   baseOpacity: 0.025, pixelVariation: 0.085, maxOpacity: 0.76,
   highlightBase: 0.16, highlightVariation: 0.34, rippleOpacity: 0.34,
 };
@@ -28,7 +28,9 @@ function draw(time) {
   frame = 0;
   const delta = Math.min(time - lastTime, 50);
   lastTime = time;
-  glow += ((pointer.active ? 1 : 0) - glow) * (1 - Math.exp(-delta / settings.glowDuration));
+  const targetGlow = pointer.active ? 1 : 0;
+  glow += (targetGlow - glow) * (1 - Math.exp(-delta / settings.glowDuration));
+  if (Math.abs(targetGlow - glow) < 0.001) glow = targetGlow;
   waves = waves.filter(wave => time - wave.time < settings.waveDuration);
   const activeWaves = waves.map(wave => ({
     x: wave.x * width,
@@ -43,7 +45,7 @@ function draw(time) {
   const pointerX = pointer.x * width;
   const pointerY = pointer.y * height;
   const highlightSpread = width * width * settings.highlightSpread;
-  const shimmerPhase = time / settings.shimmerPeriod;
+  const shimmerPhase = (pointer.x + pointer.y) * Math.PI * 2;
   const shimmerStrength = reducedMotion.matches ? 0 : settings.shimmerStrength * glow;
 
   for (const { row, column, seed } of pixels) {
@@ -68,7 +70,7 @@ function draw(time) {
       cellWidth - settings.gap, cellHeight - settings.gap);
   }
 
-  if (!reducedMotion.matches && (pointer.active || glow > 0.001 || waves.length)) {
+  if (!reducedMotion.matches && (glow !== targetGlow || waves.length)) {
     frame = requestAnimationFrame(draw);
   }
 }
