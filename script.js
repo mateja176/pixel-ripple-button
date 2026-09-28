@@ -1,7 +1,8 @@
 const button = document.querySelector('.pixel-button');
 const canvas = button.querySelector('canvas');
 const context = canvas.getContext('2d');
-const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+let reducedMotion = motionPreference.matches;
 const settings = {
   columns: 40, rows: 14, gap: 1.5,
   maxTilt: 9,
@@ -46,7 +47,7 @@ function draw(time) {
   const pointerY = pointer.y * height;
   const highlightSpread = width * width * settings.highlightSpread;
   const shimmerPhase = (pointer.x + pointer.y) * Math.PI * 2;
-  const shimmerStrength = reducedMotion.matches ? 0 : settings.shimmerStrength * glow;
+  const shimmerStrength = reducedMotion ? 0 : settings.shimmerStrength * glow;
 
   for (const { row, column, seed } of pixels) {
     const x = (column + 0.5) * cellWidth;
@@ -70,7 +71,7 @@ function draw(time) {
       cellWidth - settings.gap, cellHeight - settings.gap);
   }
 
-  if (!reducedMotion.matches && (glow !== targetGlow || waves.length)) {
+  if (!reducedMotion && (glow !== targetGlow || waves.length)) {
     frame = requestAnimationFrame(draw);
   }
 }
@@ -89,7 +90,7 @@ function movePointer(event) {
   pointer.active = true;
   button.style.setProperty('--tilt-x', `${(0.5 - pointer.y) * settings.maxTilt * 2}deg`);
   button.style.setProperty('--tilt-y', `${(pointer.x - 0.5) * settings.maxTilt * 2}deg`);
-  if (reducedMotion.matches) glow = 1;
+  if (reducedMotion) glow = 1;
   render();
 }
 
@@ -97,7 +98,7 @@ function releasePointer() {
   pointer.active = false;
   button.style.removeProperty('--tilt-x');
   button.style.removeProperty('--tilt-y');
-  if (reducedMotion.matches) glow = 0;
+  if (reducedMotion) glow = 0;
   render();
 }
 
@@ -109,7 +110,7 @@ button.addEventListener('pointerup', event => {
   if (event.pointerType !== 'mouse') releasePointer();
 });
 button.addEventListener('click', event => {
-  if (reducedMotion.matches) return;
+  if (reducedMotion) return;
   const rect = button.getBoundingClientRect();
   const x = event.detail === 0 ? 0.5 : (event.clientX - rect.left) / rect.width;
   const y = event.detail === 0 ? 0.5 : (event.clientY - rect.top) / rect.height;
@@ -127,7 +128,8 @@ new ResizeObserver(() => {
   render();
 }).observe(button);
 
-reducedMotion.addEventListener('change', () => {
+motionPreference.addEventListener('change', ({ matches }) => {
+  reducedMotion = matches;
   waves = [];
   glow = pointer.active ? 1 : 0;
   render();
